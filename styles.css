@@ -1,0 +1,27 @@
+@CHARSET "UTF-8";
+
+.shrinkwrap {
+	text-align: center;
+	display: inline;
+}
+
+label span:after {
+	content: ":"
+}
+
+label span {
+	padding-right: 0.5em;
+}
+
+table {
+	border: 1px solid gray;
+}
+
+fieldset {
+	spacing: 4em;
+	float: left;
+}
+
+.clearfloat {
+	clear: both;
+}

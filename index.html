@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+  <title>Javascript OpenStack client</title>
+  <link rel="stylesheet" href="styles.css" type="text/css" media="screen" />
+  <link rel="stylesheet" type="text/css" href="jquery-ui-1.11.4.custom/jquery-ui.min.css" />
+  <link rel="stylesheet" type="text/css" href="DataTables-1.10.7/media/css/jquery.dataTables.min.css" />
+  <script type="text/javascript" src="json2.js"></script>
+  <script type="text/javascript" src="jquery-1.11.3.min.js"></script>
+  <script type="text/javascript" src="jquery-ui-1.11.4.custom/jquery-ui.min.js"></script>
+  <script type="text/javascript" src="DataTables-1.10.7/media/js/jquery.dataTables.min.js"></script>
+  <script type="text/javascript" src="client.js"></script>
+  <script type="text/javascript" src="keystone.js"></script>
+  <script type="text/javascript" src="keystone-admin.js"></script>
+  <script type="text/javascript" src="nova.js"></script>
+  <script type="text/javascript" src="controller.js"></script>
+</head>
+<body>
+
+<div id="authentication">
+<form method="" action="">
+<fieldset class="shrinkwrap">
+<legend>Authentication</legend>
+<p><label><span>Keystone base URL</span><input type="text" value="http://example.com:5000" id="keystoneBaseURL" type="url" required name="keystoneBaseURL" autocomplete="keystoneBaseURL"></label></p>
+<p><label><span>User name</span><input type="text" value="admin" id="username" required name="username" autocomplete="username"></label></p>
+<p><label><span>Password</span><input id="password" type="password" required name="password"></label></p>
+<p><button id="goButton" name="goButton">Authenticate</button></p>
+</fieldset>
+</form>
+</div>
+
+<div id="tenant">
+<form method="" action="">
+<fieldset class="shrinkwrap">
+<legend>Tenant</legend>
+<p><label><span>Current tenant</span><select id="tenantSelect" name="tenantSelect" required></select></label></p>
+</fieldset>
+</form>
+</div>
+
+<div class="clearfloat"></div>
+
+<div id="catalog">
+<form method="" action="">
+<fieldset class="shrinkwrap">
+<legend>Endpoints</legend>
+<table></table>
+</fieldset>
+</form>
+</div>
+
+<div id="instances">
+<form method="" action="">
+<fieldset class="shrinkwrap">
+<legend>Instances</legend>
+<table></table>
+</fieldset>
+</form>
+</div>
+
+</body>
+</html>
