@@ -3,9 +3,14 @@
  * mds900 20150703
  */
 
-function populateTenants(tenants) {
+// TODO: Restrict the scope of this
+"use strict";
+
+var keystone, nova;
+
+function populateTenants(response) {
 	var target = $("#tenantSelect").empty();
-	$(tenants.tenants).each(function(i, tenant) {
+	$(response.tenants).each(function(i, tenant) {
 		target.append(
 			$("<option>")
 			.attr({ label: tenant.name, value: tenant.id })
@@ -15,25 +20,29 @@ function populateTenants(tenants) {
 }
 
 function populateCatalog(catalog) {
-	$(catalog).each(function(i, service) {
-		$(service.endpoints).each(function(j, endpoint) {
-			var prop;
-			for (prop in endpoint) {
-				service[prop] = endpoint[prop];
-			}
-		});
-	});
 	$("#catalog table").DataTable().clear().rows.add(catalog).draw();
 }
 
-function populateInstances(instances) {
-	$("#instances table").DataTable().clear().rows.add(instances.servers).draw();
+function populateInstances(response) {
+	$(response.servers).each(function(i, instance) {
+		var addresses = [];
+		$.each(instance.addresses, function(j, network) {
+			$(network).each(function(k, port) {
+				addresses.push(port.addr);
+			});
+		});
+		instance.addressList = addresses.join(", ");
+	});
+	$("#instances table").DataTable().clear().rows.add(response.servers).draw();
 }
 
-var keystone, nova;
+function populateHypervisors(response) {
+	$("#hypervisors table").DataTable().clear().rows.add(response.hypervisors).draw();
+}
 
-function onAuthenticated() {
-	populateCatalog(keystone.getCatalog());
+function onAuthenticated(catalog) {
+	var url = keystone.getEndpoint({ serviceType: "identity", endpointType: "public" });
+	populateCatalog(catalog);
 	// Use the catalog to connect to Nova
 	nova = new osclient.Nova({
 		publicURL: keystone.getEndpoint({
@@ -42,23 +51,11 @@ function onAuthenticated() {
 		}),
 		token: keystone.getToken()
 	});
+	keystone.getTenants(populateTenants, false);
 	// Use Nova to retrieve a list of instances
-	nova.getInstances({}, function(instances) {
-		populateInstances(instances);
-	});
-};
-
-function selectTenant(newTenantID) {
-	var params = {
-		authURL: $("#keystoneBaseURL").val(),
-		username: $("#username").val(),
-		password: $("#password").val()
-	};
-	if (newTenantID) {
-		params.tenantID = newTenantID;
-	}
-	keystone = new osclient.Keystone(params);
-	keystone.authenticate(onAuthenticated);
+	nova.getAllInstancesDetailed({}, populateInstances);
+	// Use Nova to retrieve a list of hypervisors
+	nova.getHypervisorsDetailed(populateHypervisors);
 };
 
 (function($) {
@@ -71,44 +68,50 @@ function selectTenant(newTenantID) {
 		$("#catalog table").DataTable({
 			columns: [
 				{ "data": "type", title: "Type" },
-				{ "data": "name", title: "Name" },
-				{ "data": "publicURL", title: "Public URL" },
-				{ "data": "adminURL", title: "Admin URL" },
-				{ "data": "internalURL", title: "Internal URL" },
+				{ "data": "name", title: "Name" }
 			]
 		});
 		$("#instances table").DataTable({
 			columns: [
 				{ "data": "name", title: "Name" },
-				{ "data": "id", title: "UUID" }
+				{ "data": "status", title: "Status" },
+				{ "data": "addressList", title: "IP Addresses" },
+				{ "data": "user_id", title: "User ID" },
+				{ "data": "tenant_id", title: "Tenant ID" }
+				// { "data": , title: "" },
+			]
+		});
+		$("#hypervisors table").DataTable({
+			columns: [
+				{ "data": "current_workload", title: "Workload" },
+				{ "data": "disk_available_least", title: "Least Available Disk" },
+				{ "data": "free_disk_gb", title: "Free Disk" },
+				{ "data": "free_ram_mb", title: "Free RAM" },
+				{ "data": "host_ip", title: "IP" },
+				{ "data": "hypervisor_hostname", title: "Hostname" },
+				{ "data": "hypervisor_type", title: "Type" },
+				{ "data": "hypervisor_version", title: "Version" },
+				{ "data": "id", title: "ID" },
+				{ "data": "local_gb", title: "Local GB" },
+				{ "data": "local_gb_used", title: "Local GB Used" },
+				{ "data": "memory_mb", title: "Memory" },
+				{ "data": "memory_mb_used", title: "Memory Used" },
+				{ "data": "running_vms", title: "Running VMs" },
+				{ "data": "vcpus", title: "VCPUs" },
+				{ "data": "vcpus_used", title: "VCPUs Used" }
 			]
 		});
 		tenantSelect.on("change", function() {
-			selectTenant(tenantSelect.val());
+			keystone.setTenantID(tenantSelect.val());
 		});
 		$("#goButton").on("click", function() {
 			keystone = new osclient.Keystone({
 				authURL: $("#keystoneBaseURL").val(),
+				domainName: 'default',
 				username: $("#username").val(),
 				password: $("#password").val()
 			});
-			// Authenticate without a tenant, to obtain a token but no valid service catalog
-			keystone.authenticate(function() {
-				// Use the token to obtain a list of accessible tenants
-				keystone.getTenants(function(tenants) {
-					populateTenants(tenants);
-					// Choose the first tenant listed
-					var defaultTenant = tenants.tenants[0].id;
-					// Authenticate again, this time with a tenant ID, to obtain the service catalog
-					keystone = new osclient.Keystone({
-						authURL: $("#keystoneBaseURL").val(),
-						tenantID: defaultTenant,
-						username: $("#username").val(),
-						password: $("#password").val()
-					});
-					keystone.authenticate(onAuthenticated);
-				});
-			});
+			keystone.retrieveCatalog(onAuthenticated);
 			return false;
 		});
 	});

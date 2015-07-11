@@ -3,6 +3,9 @@
  * mds900 20150703
  */
 
+// TODO: Restrict the scope of this
+"use strict";
+
 /**
  * Client for the Compute API ("Nova")
  */
@@ -51,7 +54,11 @@ $.extend(osclient.Nova.prototype, {
 		});
 	},
 
-	getInstancesOptionalDetail: function(detailed, params, onComplete) {
+	getInstancesOptionalDetail: function(detailed, allTenants, params, onComplete) {
+		if (allTenants) {
+			// Undocumented parameter discovered using 'nova --debug list --all-tenants'
+			params.all_tenants = 1;
+		}
 		this.doRequest({
 			data: params,
 			headers: { "X-Auth-Token": this.token },
@@ -61,12 +68,20 @@ $.extend(osclient.Nova.prototype, {
 		});
 	},
 
-	getInstances: function(params, onComplete) {
-		return this.getInstancesOptionalDetail(false, params, onComplete);
+	getTenantInstances: function(params, onComplete) {
+		return this.getInstancesOptionalDetail(false, false, params, onComplete);
 	},
 
-	getInstancesDetailed: function(params, onComplete) {
-		return this.getInstancesOptionalDetail(true, params, onComplete);
+	getTenantInstancesDetailed: function(params, onComplete) {
+		return this.getInstancesOptionalDetail(true, false, params, onComplete);
+	},
+
+	getAllInstances: function(params, onComplete) {
+		return this.getInstancesOptionalDetail(false, true, params, onComplete);
+	},
+
+	getAllInstancesDetailed: function(params, onComplete) {
+		return this.getInstancesOptionalDetail(true, true, params, onComplete);
 	},
 
 	getInstance: function(serverID, onComplete) {
@@ -85,12 +100,38 @@ $.extend(osclient.Nova.prototype, {
 		});
 	},
 
-	getHypervisors: function(onComplete) {
+	getHosts: function(params, onComplete) {
+		this.doRequest({
+			data: params,
+			headers: { "X-Auth-Token": this.token },
+			processData: true,
+			success: onComplete,
+			url: this.url + "/os-hosts"
+		});
+	},
+
+	getHost: function(hostName, onComplete) {
 		this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			success: onComplete,
-			url: this.url + "/os-hypervisors"
+			url: this.url + "/os-hosts/" + hostName
 		});
+	},
+
+	getHypervisorsOptionalDetail: function(detailed, onComplete) {
+		this.doRequest({
+			headers: { "X-Auth-Token": this.token },
+			success: onComplete,
+			url: this.url + "/os-hypervisors" + (detailed ? "/detail" : "")
+		});
+	},
+
+	getHypervisors: function(onComplete) {
+		return this.getHypervisorsOptionalDetail(false, onComplete);
+	},
+
+	getHypervisorsDetailed: function(onComplete) {
+		return this.getHypervisorsOptionalDetail(true, onComplete);
 	},
 
 	getHypervisorInstances: function(hypervisorHostname, onComplete) {
