@@ -28,7 +28,7 @@ $.extend(osclient.Nova.prototype, {
 	 * Retrieve rate and absolute resource limits for the given tenant ID.
 	 */
 	getLimits: function(onComplete) {
-		this.doRequest({
+		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			success: onComplete,
 			url: this.url + "/limits"
@@ -39,7 +39,7 @@ $.extend(osclient.Nova.prototype, {
 	 * Retrieve a list of available extensions to the Compute API.
 	 */
 	getExtensions: function(onComplete) {
-		this.doRequest({
+		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			success: onComplete,
 			url: this.url + "/extensions"
@@ -47,7 +47,7 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getExtension: function(extensionName, onComplete) {
-		this.doRequest({
+		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			success: onComplete,
 			url: this.url + "/extensions/" + extensionName
@@ -59,7 +59,7 @@ $.extend(osclient.Nova.prototype, {
 			// Undocumented parameter discovered using 'nova --debug list --all-tenants'
 			params.all_tenants = 1;
 		}
-		this.doRequest({
+		return this.doRequest({
 			data: params,
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
@@ -85,7 +85,7 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getInstance: function(serverID, onComplete) {
-		this.doRequest({
+		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			success: onComplete,
 			url: this.url + "/servers/" + serverID
@@ -93,7 +93,7 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getInstanceIPs: function(serverID, onComplete) {
-		this.doRequest({
+		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			success: onComplete,
 			url: this.url + "/servers/" + serverID + "/ips"
@@ -101,7 +101,7 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getHosts: function(params, onComplete) {
-		this.doRequest({
+		return this.doRequest({
 			data: params,
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
@@ -111,7 +111,7 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getHost: function(hostName, onComplete) {
-		this.doRequest({
+		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			success: onComplete,
 			url: this.url + "/os-hosts/" + hostName
@@ -119,7 +119,7 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getHypervisorsOptionalDetail: function(detailed, onComplete) {
-		this.doRequest({
+		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			success: onComplete,
 			url: this.url + "/os-hypervisors" + (detailed ? "/detail" : "")
@@ -135,10 +135,58 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getHypervisorInstances: function(hypervisorHostname, onComplete) {
-		this.doRequest({
+		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			success: onComplete,
 			url: this.url + "/os-hypervisors/" + hypervisorHostname + "/servers"
+		});
+	},
+
+	getFlavorsOptionalDetail: function(onComplete, detailed, params) {
+		return this.doRequest({
+			data: params || {},
+			headers: { "X-Auth-Token": this.token },
+			processData: true,
+			success: onComplete,
+			url: this.url + "/flavors" + (detailed ? "/detail" : "")
+		});
+	},
+	getFlavoursOptionalDetail: function() {
+		return this.getFlavorsOptionalDetail.apply(this, arguments);
+	},
+
+	getFlavors: function(onComplete, params) {
+		return this.getFlavorsOptionalDetail(onComplete, false, params);
+	},
+	getFlavours: function() {
+		return this.getFlavors.apply(this, arguments);
+	},
+
+	getFlavorsDetailed: function(onComplete, params) {
+		return this.getFlavorsOptionalDetail(onComplete, true, params);
+	},
+	getFlavoursDetailed: function() {
+		return this.getFlavorsDetailed.apply(this, arguments);
+	},
+
+	getFlavorByID: function(flavorID, onComplete) {
+		return this.doRequest({
+			headers: { "X-Auth-Token": this.token },
+			success: onComplete,
+			url: this.url + "/flavors/" + flavorID
+		});
+	},
+	getFlavourByID: function() {
+		return this.getFlavorByID.apply(this, arguments);
+	},
+
+	getResourceUseTime: function(onComplete, params) {
+		return this.doRequest({
+			data: params || {},
+			headers: { "X-Auth-Token": this.token },
+			processData: true,
+			success: onComplete,
+			url: this.url + "/os-simple-tenant-usage"
 		});
 	}
 

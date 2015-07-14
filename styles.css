@@ -25,3 +25,9 @@ fieldset {
 .clearfloat {
 	clear: both;
 }
+
+.pieChart {
+	float: left;
+	display: inline;
+	width: 20%;
+}

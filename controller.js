@@ -41,21 +41,81 @@ function populateHypervisors(response) {
 }
 
 function onAuthenticated(catalog) {
-	var url = keystone.getEndpoint({ serviceType: "identity", endpointType: "public" });
 	populateCatalog(catalog);
-	// Use the catalog to connect to Nova
-	nova = new osclient.Nova({
-		publicURL: keystone.getEndpoint({
-			serviceType: "compute",
-			endpointType: "public"
-		}),
-		token: keystone.getToken()
-	});
 	keystone.getTenants(populateTenants, false);
-	// Use Nova to retrieve a list of instances
-	nova.getAllInstancesDetailed({}, populateInstances);
-	// Use Nova to retrieve a list of hypervisors
-	nova.getHypervisorsDetailed(populateHypervisors);
+	// Use the catalog to connect to Nova
+	keystone.getEndpoint({
+		serviceType: "compute",
+		endpointType: "public"
+	}, function(novaURL) {
+		nova = new osclient.Nova({
+			publicURL: novaURL,
+			token: keystone.getToken()
+		});
+		// Use Nova to retrieve a list of instances
+		nova.getAllInstancesDetailed({}, function(instances) {
+			populateInstances(instances);
+			makePieChartDataTenantResource(keystone, instances, "vcpus", function(pieChartData) {
+				var dest = $("#pieChartVCPUs");
+				makePieChart(dest, {
+					"header": {
+						"title": {
+							"text": "vCPU Use"
+						},
+						"subtitle": {
+							"text": "By Tenant"
+						}
+					},
+					"size": {
+						"canvasWidth": dest.width()
+					},
+					"data": {
+						content: pieChartData
+					}
+				});
+			});
+			makePieChartDataTenantResource(keystone, instances, "ram", function(pieChartData) {
+				var dest = $("#pieChartMemory");
+				makePieChart(dest, {
+					"header": {
+						"title": {
+							"text": "Memory Use"
+						},
+						"subtitle": {
+							"text": "By Tenant"
+						}
+					},
+					"size": {
+						"canvasWidth": dest.width()
+					},
+					"data": {
+						content: pieChartData
+					}
+				});
+			});
+			makePieChartDataTenantResource(keystone, instances, "disk", function(pieChartData) {
+				var dest = $("#pieChartLocalDisk");
+				makePieChart(dest, {
+					"header": {
+						"title": {
+							"text": "Local Disk Use"
+						},
+						"subtitle": {
+							"text": "By Tenant"
+						}
+					},
+					"size": {
+						"canvasWidth": dest.width()
+					},
+					"data": {
+						content: pieChartData
+					}
+				});
+			});
+		});
+		// Use Nova to retrieve a list of hypervisors
+		nova.getHypervisorsDetailed(populateHypervisors);
+	});
 };
 
 (function($) {

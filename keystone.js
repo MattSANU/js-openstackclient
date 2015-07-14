@@ -30,7 +30,7 @@ $.extend(osclient.Keystone.prototype, {
 	retrieveVersions: function(onComplete) {
 		var keystone = this;
 		if ($.isEmptyObject(this.apiVersions)) {
-			this.doRequest({
+			return this.doRequest({
 				// jQuery interprets the HTTP status code 300 Multiple Choices as an error
 				error: function(jqxhr, status, errorThrown) {
 					// jqxhr.response is undefined in this error handler
@@ -71,7 +71,7 @@ $.extend(osclient.Keystone.prototype, {
 		} else if (this.tenantName) {
 			authPayload.auth.tenantName = this.tenantName;
 		}
-		this.doRequest({
+		return this.doRequest({
 			data: JSON.stringify(authPayload),
 			method: "POST",
 			processData: false,
@@ -127,7 +127,7 @@ $.extend(osclient.Keystone.prototype, {
 		} else {
 			throw "Neither username and domainID nor userID supplied";
 		}
-		this.doRequest({
+		return this.doRequest({
 			data: JSON.stringify(authPayload),
 			method: "POST",
 			processData: false,
@@ -167,7 +167,7 @@ $.extend(osclient.Keystone.prototype, {
 		if (this.token) {
 			onComplete();
 		} else {
-			this.retrieveVersions(function() {
+			return this.retrieveVersions(function() {
 				if ("v3.0" in keystone.apiVersions) {
 					keystone.authenticatev3(function() {
 						keystone.findIdentityEndpoints();
@@ -206,7 +206,7 @@ $.extend(osclient.Keystone.prototype, {
 	 */
 	retrieveCatalog: function(onComplete) {
 		var keystone = this;
-		this.authenticate(function() {
+		return this.authenticate(function() {
 			onComplete(keystone.catalog);
 		});
 	},
@@ -284,9 +284,9 @@ $.extend(osclient.Keystone.prototype, {
 	 * endpointType: The endpoint type, for example "public"
 	 * endpointID: The UUID of the endpoint.
 	 */
-	getEndpoint: function(params) {
+	getEndpoint: function(params, onComplete) {
 		var foundURL = undefined;
-		this.retrieveCatalog(function(catalog) {
+		return this.retrieveCatalog(function(catalog) {
 			// TODO: version-specific matching based on version response and this catalog response.
 			$(catalog).each(function(i, service) {
 				if (
@@ -330,8 +330,8 @@ $.extend(osclient.Keystone.prototype, {
 					}
 				}
 			});
+			onComplete(foundURL);
 		});
-		return foundURL;
 	},
 
 	/**
@@ -362,6 +362,9 @@ $.extend(osclient.Keystone.prototype, {
 		this.tenantName = null;
 		this.clearToken();
 	},
+	setProjectID: function() {
+		return this.setTEnantID.apply(this, arguments);
+	},
 
 	/**
 	 * Set the tenant name. This will cause retrieval of a new catalog when required.
@@ -370,6 +373,9 @@ $.extend(osclient.Keystone.prototype, {
 		this.tenantName = newTenantName;
 		this.tenantID = null;
 		this.clearToken();
+	},
+	setProjectName: function() {
+		return this.setTenantName.apply(this, arguments);
 	},
 
 	/**
@@ -410,7 +416,7 @@ $.extend(osclient.Keystone.prototype, {
 		} else {
 			throw "No compatible Identity API";
 		}
-		this.doRequest({
+		return this.doRequest({
 			data: data,
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
@@ -427,6 +433,9 @@ $.extend(osclient.Keystone.prototype, {
 			url: url
 		});
 	},
+	getProjects: function() {
+		return this.getTenants.apply(this, arguments);
+	},
 
 	/**
 	 * Retrieve details of the user with the given ID.
@@ -440,7 +449,7 @@ $.extend(osclient.Keystone.prototype, {
 		} else {
 			throw "No compatible Identity API";
 		}
-		this.doRequest({
+		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			success: onComplete,
 			url: url + '/users/' + userID
@@ -459,7 +468,7 @@ $.extend(osclient.Keystone.prototype, {
 		} else {
 			throw "No compatible Identity API";
 		}
-		this.doRequest({
+		return this.doRequest({
 			data: { name: username },
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
@@ -482,12 +491,15 @@ $.extend(osclient.Keystone.prototype, {
 		} else {
 			throw "No compatible Identity API";
 		}
-		this.doRequest({
+		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			success: onComplete,
 			// FIXME: Does this request need to go to the 'admin' URL rather than the public one?
 			url: url + "/" + tenantID
 		});
+	},
+	getProjectByID: function() {
+		return this.getTenantByID.apply(this, arguments);
 	},
 
 	/**
@@ -503,7 +515,7 @@ $.extend(osclient.Keystone.prototype, {
 		} else {
 			throw "No compatible Identity API";
 		}
-		this.doRequest({
+		return this.doRequest({
 			data: { name: tenantName },
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
@@ -511,6 +523,9 @@ $.extend(osclient.Keystone.prototype, {
 			// FIXME: Does this request need to go to the 'admin' URL rather than the public one?
 			url: url
 		});
+	},
+	getProjectByName: function() {
+		return this.getTenantByName.apply(this, arguments);
 	}
 
 	// TODO: The rest of the Identity API 2.0, Identity admin API 2.0 and Identity API 3

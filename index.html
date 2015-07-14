@@ -4,14 +4,17 @@
 <meta charset="UTF-8">
   <title>Javascript OpenStack client</title>
   <link rel="stylesheet" href="styles.css" type="text/css" media="screen" />
-  <link rel="stylesheet" type="text/css" href="jquery-ui-1.11.4.custom/jquery-ui.min.css" />
-  <link rel="stylesheet" type="text/css" href="DataTables-1.10.7/media/css/jquery.dataTables.min.css" />
+  <link rel="stylesheet" type="text/css" href="../jquery-ui-1.11.4.custom/jquery-ui.min.css" />
+  <link rel="stylesheet" type="text/css" href="../DataTables-1.10.7/media/css/jquery.dataTables.min.css" />
   <link rel="stylesheet" type="text/css" href="../DataTables-Plugins/integration/jqueryui/dataTables.jqueryui.css" />
-  <script type="text/javascript" src="json2.js"></script>
-  <script type="text/javascript" src="jquery-1.11.3.min.js"></script>
-  <script type="text/javascript" src="jquery-ui-1.11.4.custom/jquery-ui.min.js"></script>
-  <script type="text/javascript" src="DataTables-1.10.7/media/js/jquery.dataTables.min.js"></script>
+  <script type="text/javascript" src="../json2.js"></script>
+  <script type="text/javascript" src="../jquery-1.11.3.min.js"></script>
+  <script type="text/javascript" src="../jquery-ui-1.11.4.custom/jquery-ui.min.js"></script>
+  <script type="text/javascript" src="../DataTables-1.10.7/media/js/jquery.dataTables.js"></script>
   <script type="text/javascript" src="../DataTables-Plugins/integration/jqueryui/dataTables.jqueryui.min.js"></script>
+  <script type="text/javascript" src="../d3/d3.min.js"></script>
+  <script type="text/javascript" src="../d3pie/d3pie/d3pie.min.js"></script>
+  <script type="text/javascript" src="pie.js"></script>
   <script type="text/javascript" src="client.js"></script>
   <script type="text/javascript" src="keystone.js"></script>
   <script type="text/javascript" src="nova.js"></script>
@@ -20,7 +23,7 @@
 <body>
 
 <div id="authentication">
-<form method="" action="">
+<form method="" action="" onSubmit="return false;">
 <fieldset class="shrinkwrap">
 <legend>Authentication</legend>
 <p><label><span>Keystone base URL</span><input type="text" value="http://example.com:5000" id="keystoneBaseURL" type="url" required name="keystoneBaseURL" autocomplete="keystoneBaseURL"></label></p>
@@ -30,6 +33,10 @@
 </fieldset>
 </form>
 </div>
+
+<div id="pieChartVCPUs" class="pieChart"></div>
+<div id="pieChartMemory" class="pieChart"></div>
+<div id="pieChartLocalDisk" class="pieChart"></div>
 
 <div id="tenant">
 <form method="" action="">
