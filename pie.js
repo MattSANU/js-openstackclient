@@ -81,7 +81,7 @@ var chartBaseConfig = {
 	},
 	"callbacks": {
 		onClickSegment: function(event) {
-			// TODO
+			$(event.segment).closest("svg").parent().triggerHandler("segmentClicked.d3pie", event);
 		}
 	}
 };
@@ -132,7 +132,8 @@ function makePieChartDataTenantResource(keystone, instances, resource, onComplet
 		$.each(tenants, function(tenantID, tenant) {
 			data.push({
 				label: tenant.tenantName,
-				value: tenant[resource]
+				value: tenant[resource],
+				id: tenantID
 			});
 		});
 		onComplete(data);

@@ -113,6 +113,10 @@ function onAuthenticated(catalog) {
 				});
 			});
 		});
+		$(".pieChart").on("segmentClicked.d3pie", function(event, data) {
+			// TODO
+			console.log("Pie segment for tenant " + data.data.id + " " + (data.expanded ? "un" : "") + "expanded");
+		});
 		// Use Nova to retrieve a list of hypervisors
 		nova.getHypervisorsDetailed(populateHypervisors);
 	});
