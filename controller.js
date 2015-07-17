@@ -8,9 +8,9 @@
 
 var keystone, nova;
 
-function populateTenants(response) {
+function populateTenants(tenants) {
 	var target = $("#tenantSelect").empty();
-	$(response.tenants).each(function(i, tenant) {
+	$(tenants).each(function(i, tenant) {
 		target.append(
 			$("<option>")
 			.attr({ label: tenant.name, value: tenant.id })
@@ -32,7 +32,7 @@ function addDownloadLinks() {
 }
 
 function populateInstances(instances) {
-	$(instances.servers).each(function(i, instance) {
+	$(instances).each(function(i, instance) {
 		var addresses = [];
 		$.each(instance.addresses, function(j, network) {
 			$(network).each(function(k, port) {
@@ -41,7 +41,7 @@ function populateInstances(instances) {
 		});
 		instance.addressList = addresses.join(", ");
 	});
-	$("#instances table").DataTable().clear().rows.add(instances.servers).draw();
+	$("#instances table").DataTable().clear().rows.add(instances).draw();
 	makePieChartDataTenantResource(keystone, instances, "vcpus", function(pieChartData) {
 		var dest = $("#pieChartVCPUs");
 		makePieChart(dest, {
@@ -101,8 +101,8 @@ function populateInstances(instances) {
 	});
 }
 
-function populateHypervisors(response) {
-	$("#hypervisors table").DataTable().clear().rows.add(response.hypervisors).draw();
+function populateHypervisors(hypervisors) {
+	$("#hypervisors table").DataTable().clear().rows.add(hypervisors).draw();
 }
 
 function onAuthenticated(catalog) {

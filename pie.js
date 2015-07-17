@@ -91,16 +91,16 @@ function makePieChartDataTenantResources(keystone, instances, onComplete) {
 	var byTenant = {}, promise, promises = [], flavours = [];
 	promises.push(promise = nova.getFlavorsDetailed());
 	promise.done(function(flavours) {
-		$(flavours.flavors).each(function(i, flavour) {
+		$(flavours).each(function(i, flavour) {
 			flavours[flavour.id] = flavour;
 		});
 	});
-	$(instances.servers).each(function(i, instance) {
+	$(instances).each(function(i, instance) {
 		if (!(instance.flavor.id in flavours)) {
 			// This may be a flavour deleted since the instance was booted.
 			promises.push(promise = nova.getFlavorByID(instance.flavor.id));
 			promise.done(function(flavour) {
-				flavours[instance.flavor.id] = flavour.flavor;
+				flavours[instance.flavor.id] = flavour;
 			});
 		}
 		if (!(instance.tenant_id in byTenant)) {
@@ -117,7 +117,7 @@ function makePieChartDataTenantResources(keystone, instances, onComplete) {
 		}
 	});
 	$.when.apply($, promises).done(function() {
-		$(instances.servers).each(function(i, instance) {
+		$(instances).each(function(i, instance) {
 			byTenant[instance.tenant_id].vcpus += flavours[instance.flavor.id].vcpus;
 			byTenant[instance.tenant_id].ram += flavours[instance.flavor.id].ram;
 			byTenant[instance.tenant_id].disk += flavours[instance.flavor.id].disk;

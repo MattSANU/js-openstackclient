@@ -185,11 +185,11 @@ $.extend(osclient.Keystone.prototype, {
 							} else {
 								// Use the token to obtain a list of accessible tenants
 								keystone.getTenants().done(function(tenants) {
-									if (!tenants.tenants.length) {
+									if (!tenants.length) {
 										throw "No accessible tenants";
 									}
 									// Choose the first tenant listed
-									keystone.setTenantID(tenants.tenants[0].id);
+									keystone.setTenantID(tenants[0].id);
 									// Authenticate again, this time with a tenant ID, to obtain the service catalog
 									keystone.authenticate2_0().done(function() {
 										keytone.findIdentityEndpoints();
@@ -385,7 +385,7 @@ $.extend(osclient.Keystone.prototype, {
 	 * This can be all tenants, or only those accessible via the currently-in-use credentials.
 	 */
 	getTenants: function(includeAll, maxResults, startAfter) {
-		var promise, url, data = {};
+		var promise, deferred = $.Deferred(), url, data = {};
 		// TODO: Accept a generalised params object rather than positional arguments
 		if ("v3.0" in this.apiVersions) {
 			url = this.publicURL;
@@ -428,14 +428,13 @@ $.extend(osclient.Keystone.prototype, {
 		}).promise();
 		promise.done(function(response) {
 			// Normalise the v2.0/v3 response
-			if ("tenants" in response && !("projects" in response)) {
-				response.projects = response.tenants;
-			}
-			if ("projects" in response && !("tenants" in response)) {
-				response.tenants = response.projects;
+			if ("tenants" in response) {
+				deferred.resolve(response.tenants);
+			} else if ("projects" in response) {
+				deferred.resolve(response.projects);
 			}
 		});
-		return promise;
+		return deferred.promise();
 	},
 	getProjects: function() {
 		return this.getTenants.apply(this, arguments);

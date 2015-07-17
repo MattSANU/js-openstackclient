@@ -61,18 +61,22 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getInstancesOptionalDetail: function(detailed, allTenants, params) {
+		var deferred = $.Deferred();
 		// TODO: Cache these requests
 		params = params || {};
 		if (allTenants) {
 			// Undocumented parameter discovered using 'nova --debug list --all-tenants'
 			params.all_tenants = 1;
 		}
-		return this.doRequest({
+		this.doRequest({
 			data: params,
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
 			url: this.url + "/servers" + (detailed ? "/detail" : "")
-		}).promise();
+		}).done(function(response) {
+			deferred.resolve(response.servers);
+		});
+		return deferred.promise();
 	},
 
 	getTenantInstances: function(params) {
@@ -130,11 +134,15 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getHypervisorsOptionalDetail: function(detailed) {
+		var deferred = $.Deferred();
 		// TODO: Cache this call, with a way to disable caching on user demand
-		return this.doRequest({
+		this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			url: this.url + "/os-hypervisors" + (detailed ? "/detail" : "")
-		}).promise();
+		}).done(function(response) {
+			deferred.resolve(response.hypervisors);
+		});
+		return deferred.promise();
 	},
 
 	getHypervisors: function() {
@@ -154,13 +162,17 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getFlavorsOptionalDetail: function(detailed, params) {
+		var deferred = $.Deferred();
 		// TODO: Cache this call, with a way to disable caching on user demand
-		return this.doRequest({
+		this.doRequest({
 			data: params || {},
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
 			url: this.url + "/flavors" + (detailed ? "/detail" : "")
-		}).promise();
+		}).done(function(response) {
+			deferred.resolve(response.flavors);
+		});
+		return deferred.promise();
 	},
 	getFlavoursOptionalDetail: function() {
 		return this.getFlavorsOptionalDetail.apply(this, arguments);
@@ -181,11 +193,16 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getFlavorByID: function(flavourID) {
+		var deferred;
 		if (!this.flavourCacheByID[flavourID]) {
-			this.flavourCacheByID[flavourID] = this.doRequest({
+			deferred = $.Deferred();
+			this.doRequest({
 				headers: { "X-Auth-Token": this.token },
 				url: this.url + "/flavors/" + flavourID
-			}).promise();
+			}).done(function(response) {
+				deferred.resolve(response.flavor);
+			});
+			this.flavourCacheByID[flavourID] = deferred.promise();
 		}
 		return this.flavourCacheByID[flavourID];
 	},
