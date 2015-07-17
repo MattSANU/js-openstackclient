@@ -42,61 +42,63 @@ function populateInstances(instances) {
 		instance.addressList = addresses.join(", ");
 	});
 	$("#instances table").DataTable().clear().rows.add(instances).draw();
-	makePieChartDataTenantResource(keystone, instances, "vcpus", function(pieChartData) {
-		var dest = $("#pieChartVCPUs");
-		makePieChart(dest, {
-			"header": {
-				"title": {
-					"text": "vCPU Use"
+	retrieveTenantResourceUse(keystone, instances, function(tenantResourceUse) {
+		makePieChartDataTenantResource("vcpus", tenantResourceUse, function(pieChartData) {
+			var dest = $("#pieChartVCPUs");
+			makePieChart(dest, {
+				"header": {
+					"title": {
+						"text": "vCPU Use"
+					},
+					"subtitle": {
+						"text": "By Tenant"
+					}
 				},
-				"subtitle": {
-					"text": "By Tenant"
+				"size": {
+					"canvasWidth": dest.width()
+				},
+				"data": {
+					content: pieChartData
 				}
-			},
-			"size": {
-				"canvasWidth": dest.width()
-			},
-			"data": {
-				content: pieChartData
-			}
+			});
 		});
-	});
-	makePieChartDataTenantResource(keystone, instances, "ram", function(pieChartData) {
-		var dest = $("#pieChartMemory");
-		makePieChart(dest, {
-			"header": {
-				"title": {
-					"text": "Memory Use"
+		makePieChartDataTenantResource("ram", tenantResourceUse, function(pieChartData) {
+			var dest = $("#pieChartMemory");
+			makePieChart(dest, {
+				"header": {
+					"title": {
+						"text": "Memory Use"
+					},
+					"subtitle": {
+						"text": "By Tenant"
+					}
 				},
-				"subtitle": {
-					"text": "By Tenant"
+				"size": {
+					"canvasWidth": dest.width()
+				},
+				"data": {
+					content: pieChartData
 				}
-			},
-			"size": {
-				"canvasWidth": dest.width()
-			},
-			"data": {
-				content: pieChartData
-			}
+			});
 		});
-	});
-	makePieChartDataTenantResource(keystone, instances, "disk", function(pieChartData) {
-		var dest = $("#pieChartLocalDisk");
-		makePieChart(dest, {
-			"header": {
-				"title": {
-					"text": "Local Disk Use"
+		makePieChartDataTenantResource("disk", tenantResourceUse, function(pieChartData) {
+			var dest = $("#pieChartLocalDisk");
+			makePieChart(dest, {
+				"header": {
+					"title": {
+						"text": "Local Disk Use"
+					},
+					"subtitle": {
+						"text": "By Tenant"
+					}
 				},
-				"subtitle": {
-					"text": "By Tenant"
+				"size": {
+					"canvasWidth": dest.width()
+				},
+				"data": {
+					content: pieChartData
 				}
-			},
-			"size": {
-				"canvasWidth": dest.width()
-			},
-			"data": {
-				content: pieChartData
-			}
+			});
 		});
 	});
 }

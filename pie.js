@@ -86,7 +86,7 @@ var chartBaseConfig = {
 	}
 };
 
-function makePieChartDataTenantResources(keystone, instances, onComplete) {
+function retrieveTenantResourceUse(keystone, instances, onComplete) {
 	// FIXME: Hideously inefficient.
 	var byTenant = {}, promise, promises = [], flavours = [];
 	promises.push(promise = nova.getFlavorsDetailed());
@@ -129,18 +129,16 @@ function makePieChartDataTenantResources(keystone, instances, onComplete) {
 	});
 }
 
-function makePieChartDataTenantResource(keystone, instances, resource, onComplete) {
+function makePieChartDataTenantResource(resource, tenantResourceUse, onComplete) {
 	var data = [];
-	makePieChartDataTenantResources(keystone, instances, function(tenants) {
-		$.each(tenants, function(tenantID, tenant) {
-			data.push({
-				label: tenant.tenantName,
-				value: tenant[resource],
-				id: tenantID
-			});
+	$.each(tenantResourceUse, function(tenantID, tenant) {
+		data.push({
+			label: tenant.tenantName,
+			value: tenant[resource],
+			id: tenantID
 		});
-		onComplete(data);
 	});
+	onComplete(data);
 }
 
 function makePieChart(element, thisChartConfig) {
