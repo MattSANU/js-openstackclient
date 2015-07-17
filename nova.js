@@ -19,6 +19,10 @@ osclient.Nova = function(params) {
 	if (!this.token) {
 		throw "No authentication token supplied";
 	}
+	this.cacheExtensions = {};
+	this.instanceCacheByID = {};
+	this.hostCache = {};
+	this.flavourCacheByID = {};
 };
 osclient.Nova.prototype = new osclient.Client();
 
@@ -28,6 +32,7 @@ $.extend(osclient.Nova.prototype, {
 	 * Retrieve rate and absolute resource limits for the given tenant ID.
 	 */
 	getLimits: function() {
+		// TODO: Cache these requests
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			url: this.url + "/limits"
@@ -38,13 +43,17 @@ $.extend(osclient.Nova.prototype, {
 	 * Retrieve a list of available extensions to the Compute API.
 	 */
 	getExtensions: function() {
-		return this.doRequest({
-			headers: { "X-Auth-Token": this.token },
-			url: this.url + "/extensions"
-		}).promise();
+		if (!this.cacheExtensions) {
+			this.cacheExtensions = this.doRequest({
+				headers: { "X-Auth-Token": this.token },
+				url: this.url + "/extensions"
+			}).promise();
+		}
+		return this.cacheExtensions;
 	},
 
 	getExtension: function(extensionName) {
+		// TODO: Use a cache unified with that from getExtensions above to cache this call
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			url: this.url + "/extensions/" + extensionName
@@ -52,6 +61,7 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getInstancesOptionalDetail: function(detailed, allTenants, params) {
+		// TODO: Cache these requests
 		params = params || {};
 		if (allTenants) {
 			// Undocumented parameter discovered using 'nova --debug list --all-tenants'
@@ -81,14 +91,18 @@ $.extend(osclient.Nova.prototype, {
 		return this.getInstancesOptionalDetail(true, true, params);
 	},
 
-	getInstance: function(serverID) {
-		return this.doRequest({
-			headers: { "X-Auth-Token": this.token },
-			url: this.url + "/servers/" + serverID
-		});
+	getInstance: function(instanceID) {
+		if (!this.instanceCacheByID[instanceID]) {
+			this.instanceCacheByID[instanceID] = this.doRequest({
+				headers: { "X-Auth-Token": this.token },
+				url: this.url + "/servers/" + instanceID
+			}).promise();
+		}
+		return this.instanceCacheByID[instanceID];
 	},
 
 	getInstanceIPs: function(serverID) {
+		// TODO: Cache this call, with a way to disable caching on user demand
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			url: this.url + "/servers/" + serverID + "/ips"
@@ -96,15 +110,19 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getHosts: function(params) {
-		return this.doRequest({
-			data: params,
-			headers: { "X-Auth-Token": this.token },
-			processData: true,
-			url: this.url + "/os-hosts"
-		}).promise();
+		if (!this.hostCache) {
+			this.hostCache = this.doRequest({
+				data: params,
+				headers: { "X-Auth-Token": this.token },
+				processData: true,
+				url: this.url + "/os-hosts"
+			}).promise();
+		}
+		return this.hostCache;
 	},
 
 	getHost: function(hostName) {
+		// TODO: Use a cache unified with that from getHosts above to cache this call
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			url: this.url + "/os-hosts/" + hostName
@@ -112,6 +130,7 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getHypervisorsOptionalDetail: function(detailed) {
+		// TODO: Cache this call, with a way to disable caching on user demand
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			url: this.url + "/os-hypervisors" + (detailed ? "/detail" : "")
@@ -127,6 +146,7 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getHypervisorInstances: function(hypervisorHostname) {
+		// TODO: Cache this call, with a way to disable caching on user demand
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			url: this.url + "/os-hypervisors/" + hypervisorHostname + "/servers"
@@ -134,6 +154,7 @@ $.extend(osclient.Nova.prototype, {
 	},
 
 	getFlavorsOptionalDetail: function(detailed, params) {
+		// TODO: Cache this call, with a way to disable caching on user demand
 		return this.doRequest({
 			data: params || {},
 			headers: { "X-Auth-Token": this.token },
@@ -159,11 +180,14 @@ $.extend(osclient.Nova.prototype, {
 		return this.getFlavorsDetailed.apply(this, arguments);
 	},
 
-	getFlavorByID: function(flavorID) {
-		return this.doRequest({
-			headers: { "X-Auth-Token": this.token },
-			url: this.url + "/flavors/" + flavorID
-		}).promise();
+	getFlavorByID: function(flavourID) {
+		if (!this.flavourCacheByID[flavourID]) {
+			this.flavourCacheByID[flavourID] = this.doRequest({
+				headers: { "X-Auth-Token": this.token },
+				url: this.url + "/flavors/" + flavourID
+			}).promise();
+		}
+		return this.flavourCacheByID[flavourID];
 	},
 	getFlavourByID: function() {
 		return this.getFlavorByID.apply(this, arguments);

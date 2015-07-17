@@ -19,6 +19,9 @@ osclient.Keystone = function(params) {
 		throw "No authURL supplied";
 	}
 	this.apiVersions = {};
+	this.userCacheByID = {};
+	this.cacheTenantByID = {};
+	this.cacheTenantByName = {};
 };
 osclient.Keystone.prototype = new osclient.Client();
 
@@ -167,18 +170,18 @@ $.extend(osclient.Keystone.prototype, {
 	authenticate: function() {
 		var keystone = this;
 		if (!this.authenticateDeferred) {
-			var deferred = $.Deferred(function() {
+			this.authenticateDeferred = $.Deferred(function() {
 				keystone.retrieveVersions().done(function() {
 					if ("v3.0" in keystone.apiVersions) {
 						keystone.authenticatev3().done(function() {
 							keystone.findIdentityEndpoints();
-							deferred.resolve(keystone.catalog);
+							keystone.authenticateDeferred.resolve(keystone.catalog);
 						});
 					} else if ("v2.0" in keystone.apiVersions) {
 						keystone.authenticatev2_0().done(function() {
 							if (keystone.tenantID && keystone.catalog) {
 								keystone.findIdentityEndpoints();
-								deferred.resolve(keystone.catalog);
+								keystone.authenticateDeferred.resolve(keystone.catalog);
 							} else {
 								// Use the token to obtain a list of accessible tenants
 								keystone.getTenants().done(function(tenants) {
@@ -190,7 +193,7 @@ $.extend(osclient.Keystone.prototype, {
 									// Authenticate again, this time with a tenant ID, to obtain the service catalog
 									keystone.authenticate2_0().done(function() {
 										keytone.findIdentityEndpoints();
-										deferred.resolve(keystone.catalog);
+										keystone.authenticateDeferred.resolve(keystone.catalog);
 									});
 								});
 							}
@@ -200,9 +203,8 @@ $.extend(osclient.Keystone.prototype, {
 					}
 				});
 			});
-			this.authenticateDeferred = $.when(deferred);
 		}
-		return this.authenticateDeferred.promise();
+		return $.when(this.authenticateDeferred);
 	},
 
 	/**
@@ -351,6 +353,7 @@ $.extend(osclient.Keystone.prototype, {
 	clearToken: function() {
 		this.token = null;
 		this.catalog = null;
+		this.authenticateDeferred = null;
 	},
 
 	/**
@@ -443,27 +446,34 @@ $.extend(osclient.Keystone.prototype, {
 	 */
 	getUserByID: function(userID) {
 		var url;
-		if ("v3.0" in this.apiVersions) {
-			url = this.publicURL;
-		} else if ("v2.0" in this.apiVersions) {
-			url = this.adminURL;
-		} else {
-			throw "No compatible Identity API";
+		if (!this.userCacheByID[userID]) {
+			if ("v3.0" in this.apiVersions) {
+				url = this.publicURL;
+			} else if ("v2.0" in this.apiVersions) {
+				url = this.adminURL;
+			} else {
+				throw "No compatible Identity API";
+			}
+			this.userCacheByID[userID] = this.doRequest({
+				headers: { "X-Auth-Token": this.token },
+				url: url + '/users/' + userID
+			}).promise();
 		}
-		return this.doRequest({
-			headers: { "X-Auth-Token": this.token },
-			url: url + '/users/' + userID
-		}).promise();
+		return this.userCacheByID[userID];
 	},
 
 	/**
 	 * Retrieve details of the given-named user.
 	 */
 	getUserByName: function(username) {
+		// TODO: Cache these requests.
+		// Problem: User names are only unique within the one domain.
 		var url;
 		if ("v3.0" in this.apiVersions) {
 			url = this.publicURL;
 		} else if ("v2.0" in this.apiVersions) {
+			// In API 2.0, this request must go to the 'admin' URL rather than the public one,
+			// even if the user being enquired about is the user we previously authenticated as.
 			url = this.adminURL;
 		} else {
 			throw "No compatible Identity API";
@@ -472,7 +482,6 @@ $.extend(osclient.Keystone.prototype, {
 			data: { name: username },
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
-			// FIXME: Does this request need to go to the 'admin' URL rather than the public one?
 			url: this.publicURL + '/users'
 		}).promise();
 	},
@@ -483,18 +492,24 @@ $.extend(osclient.Keystone.prototype, {
 	 */
 	getTenantByID: function(tenantID) {
 		var url;
-		if ("v3.0" in this.apiVersions) {
-			url = this.publicURL + "/projects";
-		} else if ("v2.0" in this.apiVersions) {
-			url = this.adminURL + "/tenants";
-		} else {
-			throw "No compatible Identity API";
+		if (!this.cacheTenantByID[tenantID]) {
+			if ("v3.0" in this.apiVersions) {
+				url = this.publicURL + "/projects";
+			} else if ("v2.0" in this.apiVersions) {
+				// In API 2.0, this request must go to the 'admin' URL rather than the public one,
+				// even if the tenant being enquired about is one to which we have access using
+				// the user we previously authenticated as.
+				url = this.adminURL + "/tenants";
+			} else {
+				throw "No compatible Identity API";
+			}
+			this.cacheTenantByID[tenantID] = this.doRequest({
+				headers: { "X-Auth-Token": this.token },
+				// FIXME: Does this request need to go to the 'admin' URL rather than the public one?
+				url: url + "/" + tenantID
+			}).promise();
 		}
-		return this.doRequest({
-			headers: { "X-Auth-Token": this.token },
-			// FIXME: Does this request need to go to the 'admin' URL rather than the public one?
-			url: url + "/" + tenantID
-		}).promise();
+		return this.cacheTenantByID[tenantID];
 	},
 	getProjectByID: function() {
 		return this.getTenantByID.apply(this, arguments);
@@ -506,20 +521,26 @@ $.extend(osclient.Keystone.prototype, {
 	 */
 	getTenantByName: function(tenantName) {
 		var url;
-		if ("v3.0" in this.apiVersions) {
-			url = this.publicURL + "/projects";
-		} else if ("v2.0" in this.apiVersions) {
-			url = this.adminURL + "/tenants";
-		} else {
-			throw "No compatible Identity API";
+		if (!this.cacheTenantByName[tenantName]) {
+			if ("v3.0" in this.apiVersions) {
+				url = this.publicURL + "/projects";
+			} else if ("v2.0" in this.apiVersions) {
+				// In API 2.0, this request must go to the 'admin' URL rather than the public one,
+				// even if the tenant being enquired about is one to which we have access using
+				// the user we previously authenticated as.
+				url = this.adminURL + "/tenants";
+			} else {
+				throw "No compatible Identity API";
+			}
+			this.cacheTenantByName[tenantName] = this.doRequest({
+				data: { name: tenantName },
+				headers: { "X-Auth-Token": this.token },
+				processData: true,
+				// FIXME: Does this request need to go to the 'admin' URL rather than the public one?
+				url: url
+			}).promise();
 		}
-		return this.doRequest({
-			data: { name: tenantName },
-			headers: { "X-Auth-Token": this.token },
-			processData: true,
-			// FIXME: Does this request need to go to the 'admin' URL rather than the public one?
-			url: url
-		}).promise();
+		return this.cacheTenantByName[tenantName];
 	},
 	getProjectByName: function() {
 		return this.getTenantByName.apply(this, arguments);
