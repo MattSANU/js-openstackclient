@@ -23,6 +23,14 @@ function populateCatalog(catalog) {
 	$("#catalog table").DataTable().clear().rows.add(catalog).draw();
 }
 
+function addDownloadLinks() {
+	$("table.dataTable").each(function() {
+		var downloadLink = $("<a>").append("Export to CSV");
+		$.fn.toCSV.makeDownloadLink(downloadLink, $(this), "export");
+		$(this).parent().append(downloadLink);
+	});
+}
+
 function populateInstances(response) {
 	$(response.servers).each(function(i, instance) {
 		var addresses = [];
@@ -120,6 +128,7 @@ function onAuthenticated(catalog) {
 		// Use Nova to retrieve a list of hypervisors
 		nova.getHypervisorsDetailed(populateHypervisors);
 	});
+	addDownloadLinks();
 };
 
 (function($) {
