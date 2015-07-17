@@ -71,7 +71,9 @@ var chartBaseConfig = {
 			"effect": "elastic",
 			"speed": 400,
 			"size": 15
-		}
+		},
+		highlightSegmentOnMouseover: true,
+		highlightLuminosity: +0.1
 	},
 	"misc": {
 		"gradient": {

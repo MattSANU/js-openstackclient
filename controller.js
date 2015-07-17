@@ -55,7 +55,11 @@ function populateInstances(instances) {
 					}
 				},
 				"size": {
+					"canvasHeight": dest.height(),
 					"canvasWidth": dest.width()
+				},
+				tooltips: {
+					"string": "{label}: {value} vCPUs ({percentage}%)"
 				},
 				"data": {
 					content: pieChartData
@@ -74,7 +78,11 @@ function populateInstances(instances) {
 					}
 				},
 				"size": {
+					"canvasHeight": dest.height(),
 					"canvasWidth": dest.width()
+				},
+				tooltips: {
+					"string": "{label}: {value} MB ({percentage}%)"
 				},
 				"data": {
 					content: pieChartData
@@ -93,7 +101,11 @@ function populateInstances(instances) {
 					}
 				},
 				"size": {
+					"canvasHeight": dest.height(),
 					"canvasWidth": dest.width()
+				},
+				tooltips: {
+					"string": "{label}: {value} GB ({percentage}%)"
 				},
 				"data": {
 					content: pieChartData
