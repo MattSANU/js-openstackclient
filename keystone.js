@@ -27,28 +27,29 @@ $.extend(osclient.Keystone.prototype, {
 	/**
 	 * Retrieve a list of available versions of the Identity API.
 	 */
-	retrieveVersions: function(onComplete) {
-		var keystone = this, promise;
-		// TODO: Return a (cached) promise
-		if ($.isEmptyObject(this.apiVersions)) {
-			return this.doRequest({
+	retrieveVersions: function() {
+		var keystone = this;
+		if (!this.apiVersionsDeferred) {
+			this.apiVersionsDeferred = $.Deferred();
+			this.doRequest({
 				// jQuery interprets the HTTP status code 300 Multiple Choices as an error
 				error: function(jqxhr, status, errorThrown) {
 					// jqxhr.response is undefined in this error handler
+					var response;
 					if (300 === jqxhr.status) {
-						$(JSON.parse(jqxhr.responseText).versions.values).each(function(i, version) {
+						response = JSON.parse(jqxhr.responseText);
+						$(response.versions.values).each(function(i, version) {
 							keystone.apiVersions[version.id] = version;
 						});
-						onComplete();
+						keystone.apiVersionsDeferred.resolve(response);
 					} else {
 						throw "Failed to receive expected 300 response";
 					}
 				},
 				url: this.authURL 
 			});
-		} else {
-			onComplete();
 		}
+		return this.apiVersionsDeferred.promise();
 	},
 
 	/**
@@ -163,54 +164,45 @@ $.extend(osclient.Keystone.prototype, {
 	 * But until we have authed, we don't know of any valid tenant IDs or names.
 	 * So we auth without a tenant ID, find at least one valid tenant ID, then auth again with that.
 	 */
-	authenticate: function(onComplete) {
-		// TODO: Return a (cached) promise
+	authenticate: function() {
 		var keystone = this;
-		if (this.token) {
-			onComplete();
-		} else {
-			return this.retrieveVersions(function() {
-				if ("v3.0" in keystone.apiVersions) {
-					keystone.authenticatev3().done(function() {
-						keystone.findIdentityEndpoints();
-						onComplete();
-					});
-				} else if ("v2.0" in keystone.apiVersions) {
-					keystone.authenticatev2_0().done(function() {
-						if (this.tenantID && this.catalog) {
+		if (!this.authenticateDeferred) {
+			var deferred = $.Deferred(function() {
+				keystone.retrieveVersions().done(function() {
+					if ("v3.0" in keystone.apiVersions) {
+						keystone.authenticatev3().done(function() {
 							keystone.findIdentityEndpoints();
-							onComplete();
-						} else {
-							// Use the token to obtain a list of accessible tenants
-							keystone.getTenants().done(function(tenants) {
-								if (!tenants.tenants.length) {
-									throw "No accessible tenants";
-								}
-								// Choose the first tenant listed
-								keystone.setTenantID(tenants.tenants[0].id);
-								// Authenticate again, this time with a tenant ID, to obtain the service catalog
-								keystone.authenticate2_0().done(function() {
-									keystone.findIdentityEndpoints();
-									onComplete();
+							deferred.resolve(keystone.catalog);
+						});
+					} else if ("v2.0" in keystone.apiVersions) {
+						keystone.authenticatev2_0().done(function() {
+							if (keystone.tenantID && keystone.catalog) {
+								keystone.findIdentityEndpoints();
+								deferred.resolve(keystone.catalog);
+							} else {
+								// Use the token to obtain a list of accessible tenants
+								keystone.getTenants().done(function(tenants) {
+									if (!tenants.tenants.length) {
+										throw "No accessible tenants";
+									}
+									// Choose the first tenant listed
+									keystone.setTenantID(tenants.tenants[0].id);
+									// Authenticate again, this time with a tenant ID, to obtain the service catalog
+									keystone.authenticate2_0().done(function() {
+										keytone.findIdentityEndpoints();
+										deferred.resolve(keystone.catalog);
+									});
 								});
-							});
-						}
-					});
-				} else {
-					throw "No supported Identity API version found";
-				}
+							}
+						});
+					} else {
+						throw "No supported Identity API version found";
+					}
+				});
 			});
+			this.authenticateDeferred = $.when(deferred);
 		}
-	},
-
-	/**
-	 * Retrieve the service catalog, which lists all accessible OpenStack services.
-	 */
-	retrieveCatalog: function(onComplete) {
-		var keystone = this;
-		return this.authenticate(function() {
-			onComplete(keystone.catalog);
-		});
+		return this.authenticateDeferred.promise();
 	},
 
 	/**
@@ -286,54 +278,59 @@ $.extend(osclient.Keystone.prototype, {
 	 * endpointType: The endpoint type, for example "public"
 	 * endpointID: The UUID of the endpoint.
 	 */
-	getEndpoint: function(params, onComplete) {
-		var foundURL = undefined;
-		return this.retrieveCatalog(function(catalog) {
-			// TODO: version-specific matching based on version response and this catalog response.
-			$(catalog).each(function(i, service) {
-				if (
-					   ( !("serviceType" in params) || service.type === params.serviceType )
-					&& ( !("serviceName" in params) || service.name === params.serviceName )
-				) {
-					$(service.endpoints).each(function(i, endpoint) {
-						// v2.0 API response
-						if (
-							   ( !("regionName" in params)   || endpoint.region === params.regionName)
-							&& ( !("endpointID" in params)   || endpoint.id === params.endpointID)
-							&& ( !("endpointType" in params) || (params.endpointType + "URL") in endpoint)
-						) {
-							if ("endpointType" in params) {
-								foundURL = endpoint[params.endpointType + "URL"];
-							} else if ("publicURL" in endpoint) {
-								foundURL = endpoint.publicURL;
-							} else if ("adminURL" in endpoint) {
-								foundURL = endpoint.adminURL;
-							} else if ("internalURL" in endpoint) {
-								foundURL = endpoint.internalURL;
+	getEndpoint: function(params) {
+		var keystone = this, foundURL = undefined, parseCatalogDeferred;
+		parseCatalogDeferred = $.Deferred(function() {
+			keystone.authenticate().done(function() {
+				// TODO: version-specific matching based on version response and this catalog response.
+				$(keystone.catalog).each(function(i, service) {
+					if (
+						   ( !("serviceType" in params) || service.type === params.serviceType )
+						&& ( !("serviceName" in params) || service.name === params.serviceName )
+					) {
+						$(service.endpoints).each(function(i, endpoint) {
+							// v2.0 API response
+							if (
+								   ( !("regionName" in params)   || endpoint.region === params.regionName)
+								&& ( !("endpointID" in params)   || endpoint.id === params.endpointID)
+								&& ( !("endpointType" in params) || (params.endpointType + "URL") in endpoint)
+							) {
+								if ("endpointType" in params) {
+									foundURL = endpoint[params.endpointType + "URL"];
+								} else if ("publicURL" in endpoint) {
+									foundURL = endpoint.publicURL;
+								} else if ("adminURL" in endpoint) {
+									foundURL = endpoint.adminURL;
+								} else if ("internalURL" in endpoint) {
+									foundURL = endpoint.internalURL;
+								}
 							}
-						}
+							if (foundURL !== undefined) {
+								return false; // Terminate enumeration
+							}
+							// v3 API response
+							if (
+								   ( !("regionName" in params)   || endpoint.region === params.regionName)
+								&& ( !("endpointID" in params)   || endpoint.id === params.endpointID)
+								&& ( !("endpointType" in params) || endpoint.interface === params.endpointType)
+							) {
+								foundURL = endpoint.url;
+							}
+							if (foundURL !== undefined) {
+								return false; // Terminate enumeration
+							}
+						});
 						if (foundURL !== undefined) {
 							return false; // Terminate enumeration
 						}
-						// v3 API response
-						if (
-							   ( !("regionName" in params)   || endpoint.region === params.regionName)
-							&& ( !("endpointID" in params)   || endpoint.id === params.endpointID)
-							&& ( !("endpointType" in params) || endpoint.interface === params.endpointType)
-						) {
-							foundURL = endpoint.url;
-						}
-						if (foundURL !== undefined) {
-							return false; // Terminate enumeration
-						}
-					});
-					if (foundURL !== undefined) {
-						return false; // Terminate enumeration
 					}
+				});
+				if (foundURL) {
+					parseCatalogDeferred.resolve(foundURL);
 				}
 			});
-			onComplete(foundURL);
 		});
+		return parseCatalogDeferred.promise();
 	},
 
 	/**
@@ -399,12 +396,14 @@ $.extend(osclient.Keystone.prototype, {
 					// Docs say only: "Enables you to page through the list.".
 					data.page = startAfter;
 				}
-			} else {
+			} else if (this.userID) {
 				url += "/users/" + this.userID + "/projects";
 				// FIXME: Is there really no way to do paging? Docs say no, but could be wrong.
 				if (maxResults || startAfter) {
 					throw "Unsupported option";
 				}
+			} else {
+				throw "Not all tenants requested, and no user ID";
 			}
 		} else if ("v2.0" in this.apiVersions) {
 			// The semantics of this request depend on the endpoint it was sent to
@@ -453,7 +452,6 @@ $.extend(osclient.Keystone.prototype, {
 		}
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
-			success: onComplete,
 			url: url + '/users/' + userID
 		}).promise();
 	},

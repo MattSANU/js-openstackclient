@@ -112,15 +112,13 @@ function onAuthenticated(catalog) {
 	keystone.getEndpoint({
 		serviceType: "compute",
 		endpointType: "public"
-	}, function(novaURL) {
+	}).done(function(novaURL) {
 		nova = new osclient.Nova({
 			publicURL: novaURL,
 			token: keystone.getToken()
 		});
 		// Use Nova to retrieve a list of instances
-		nova.getAllInstancesDetailed().done(function(instances) {
-			populateInstances(instances);
-		});
+		nova.getAllInstancesDetailed().done(populateInstances);
 		$(".pieChart").on("segmentClicked.d3pie", function(event, data) {
 			// TODO
 			console.log("Pie segment for tenant " + data.data.id + " " + (data.expanded ? "un" : "") + "expanded");
@@ -176,7 +174,7 @@ function onAuthenticated(catalog) {
 		});
 		tenantSelect.on("change", function() {
 			keystone.setTenantID(tenantSelect.val());
-			keystone.retrieveCatalog(onAuthenticated);
+			keystone.authenticate().done(onAuthenticated);
 		});
 		$("#goButton").on("click", function() {
 			keystone = new osclient.Keystone({
@@ -185,7 +183,7 @@ function onAuthenticated(catalog) {
 				username: $("#username").val(),
 				password: $("#password").val()
 			});
-			keystone.retrieveCatalog(onAuthenticated);
+			keystone.authenticate().done(onAuthenticated);
 			return false;
 		});
 	});

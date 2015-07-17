@@ -92,7 +92,7 @@ $.extend(osclient.Nova.prototype, {
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			url: this.url + "/servers/" + serverID + "/ips"
-		});
+		}).promise();
 	},
 
 	getHosts: function(params) {
@@ -101,14 +101,14 @@ $.extend(osclient.Nova.prototype, {
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
 			url: this.url + "/os-hosts"
-		});
+		}).promise();
 	},
 
 	getHost: function(hostName) {
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
 			url: this.url + "/os-hosts/" + hostName
-		});
+		}).promise();
 	},
 
 	getHypervisorsOptionalDetail: function(detailed) {
