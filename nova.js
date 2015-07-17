@@ -27,34 +27,32 @@ $.extend(osclient.Nova.prototype, {
 	/**
 	 * Retrieve rate and absolute resource limits for the given tenant ID.
 	 */
-	getLimits: function(onComplete) {
+	getLimits: function() {
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
-			success: onComplete,
 			url: this.url + "/limits"
-		});
+		}).promise();
 	},
 
 	/**
 	 * Retrieve a list of available extensions to the Compute API.
 	 */
-	getExtensions: function(onComplete) {
+	getExtensions: function() {
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
-			success: onComplete,
 			url: this.url + "/extensions"
-		});
+		}).promise();
 	},
 
-	getExtension: function(extensionName, onComplete) {
+	getExtension: function(extensionName) {
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
-			success: onComplete,
 			url: this.url + "/extensions/" + extensionName
-		});
+		}).promise();
 	},
 
-	getInstancesOptionalDetail: function(detailed, allTenants, params, onComplete) {
+	getInstancesOptionalDetail: function(detailed, allTenants, params) {
+		params = params || {};
 		if (allTenants) {
 			// Undocumented parameter discovered using 'nova --debug list --all-tenants'
 			params.all_tenants = 1;
@@ -63,131 +61,121 @@ $.extend(osclient.Nova.prototype, {
 			data: params,
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
-			success: onComplete,
 			url: this.url + "/servers" + (detailed ? "/detail" : "")
-		});
+		}).promise();
 	},
 
-	getTenantInstances: function(params, onComplete) {
-		return this.getInstancesOptionalDetail(false, false, params, onComplete);
+	getTenantInstances: function(params) {
+		return this.getInstancesOptionalDetail(false, false, params);
 	},
 
-	getTenantInstancesDetailed: function(params, onComplete) {
-		return this.getInstancesOptionalDetail(true, false, params, onComplete);
+	getTenantInstancesDetailed: function(params) {
+		return this.getInstancesOptionalDetail(true, false, params);
 	},
 
-	getAllInstances: function(params, onComplete) {
-		return this.getInstancesOptionalDetail(false, true, params, onComplete);
+	getAllInstances: function(params) {
+		return this.getInstancesOptionalDetail(false, true, params);
 	},
 
-	getAllInstancesDetailed: function(params, onComplete) {
-		return this.getInstancesOptionalDetail(true, true, params, onComplete);
+	getAllInstancesDetailed: function(params) {
+		return this.getInstancesOptionalDetail(true, true, params);
 	},
 
-	getInstance: function(serverID, onComplete) {
+	getInstance: function(serverID) {
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
-			success: onComplete,
 			url: this.url + "/servers/" + serverID
 		});
 	},
 
-	getInstanceIPs: function(serverID, onComplete) {
+	getInstanceIPs: function(serverID) {
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
-			success: onComplete,
 			url: this.url + "/servers/" + serverID + "/ips"
 		});
 	},
 
-	getHosts: function(params, onComplete) {
+	getHosts: function(params) {
 		return this.doRequest({
 			data: params,
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
-			success: onComplete,
 			url: this.url + "/os-hosts"
 		});
 	},
 
-	getHost: function(hostName, onComplete) {
+	getHost: function(hostName) {
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
-			success: onComplete,
 			url: this.url + "/os-hosts/" + hostName
 		});
 	},
 
-	getHypervisorsOptionalDetail: function(detailed, onComplete) {
+	getHypervisorsOptionalDetail: function(detailed) {
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
-			success: onComplete,
 			url: this.url + "/os-hypervisors" + (detailed ? "/detail" : "")
-		});
+		}).promise();
 	},
 
-	getHypervisors: function(onComplete) {
-		return this.getHypervisorsOptionalDetail(false, onComplete);
+	getHypervisors: function() {
+		return this.getHypervisorsOptionalDetail(false);
 	},
 
-	getHypervisorsDetailed: function(onComplete) {
-		return this.getHypervisorsOptionalDetail(true, onComplete);
+	getHypervisorsDetailed: function() {
+		return this.getHypervisorsOptionalDetail(true);
 	},
 
-	getHypervisorInstances: function(hypervisorHostname, onComplete) {
+	getHypervisorInstances: function(hypervisorHostname) {
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
-			success: onComplete,
 			url: this.url + "/os-hypervisors/" + hypervisorHostname + "/servers"
-		});
+		}).promise();
 	},
 
-	getFlavorsOptionalDetail: function(onComplete, detailed, params) {
+	getFlavorsOptionalDetail: function(detailed, params) {
 		return this.doRequest({
 			data: params || {},
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
-			success: onComplete,
 			url: this.url + "/flavors" + (detailed ? "/detail" : "")
-		});
+		}).promise();
 	},
 	getFlavoursOptionalDetail: function() {
 		return this.getFlavorsOptionalDetail.apply(this, arguments);
 	},
 
-	getFlavors: function(onComplete, params) {
-		return this.getFlavorsOptionalDetail(onComplete, false, params);
+	getFlavors: function(params) {
+		return this.getFlavorsOptionalDetail(false, params);
 	},
 	getFlavours: function() {
 		return this.getFlavors.apply(this, arguments);
 	},
 
-	getFlavorsDetailed: function(onComplete, params) {
-		return this.getFlavorsOptionalDetail(onComplete, true, params);
+	getFlavorsDetailed: function(params) {
+		return this.getFlavorsOptionalDetail(true, params);
 	},
 	getFlavoursDetailed: function() {
 		return this.getFlavorsDetailed.apply(this, arguments);
 	},
 
-	getFlavorByID: function(flavorID, onComplete) {
+	getFlavorByID: function(flavorID) {
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
-			success: onComplete,
 			url: this.url + "/flavors/" + flavorID
-		});
+		}).promise();
 	},
 	getFlavourByID: function() {
 		return this.getFlavorByID.apply(this, arguments);
 	},
 
-	getResourceUseTime: function(onComplete, params) {
+	getResourceUseTime: function(params) {
 		return this.doRequest({
 			data: params || {},
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
-			success: onComplete,
 			url: this.url + "/os-simple-tenant-usage"
-		});
+		}).promise();
 	}
 
 });

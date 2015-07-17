@@ -31,8 +31,8 @@ function addDownloadLinks() {
 	});
 }
 
-function populateInstances(response) {
-	$(response.servers).each(function(i, instance) {
+function populateInstances(instances) {
+	$(instances.servers).each(function(i, instance) {
 		var addresses = [];
 		$.each(instance.addresses, function(j, network) {
 			$(network).each(function(k, port) {
@@ -41,7 +41,64 @@ function populateInstances(response) {
 		});
 		instance.addressList = addresses.join(", ");
 	});
-	$("#instances table").DataTable().clear().rows.add(response.servers).draw();
+	$("#instances table").DataTable().clear().rows.add(instances.servers).draw();
+	makePieChartDataTenantResource(keystone, instances, "vcpus", function(pieChartData) {
+		var dest = $("#pieChartVCPUs");
+		makePieChart(dest, {
+			"header": {
+				"title": {
+					"text": "vCPU Use"
+				},
+				"subtitle": {
+					"text": "By Tenant"
+				}
+			},
+			"size": {
+				"canvasWidth": dest.width()
+			},
+			"data": {
+				content: pieChartData
+			}
+		});
+	});
+	makePieChartDataTenantResource(keystone, instances, "ram", function(pieChartData) {
+		var dest = $("#pieChartMemory");
+		makePieChart(dest, {
+			"header": {
+				"title": {
+					"text": "Memory Use"
+				},
+				"subtitle": {
+					"text": "By Tenant"
+				}
+			},
+			"size": {
+				"canvasWidth": dest.width()
+			},
+			"data": {
+				content: pieChartData
+			}
+		});
+	});
+	makePieChartDataTenantResource(keystone, instances, "disk", function(pieChartData) {
+		var dest = $("#pieChartLocalDisk");
+		makePieChart(dest, {
+			"header": {
+				"title": {
+					"text": "Local Disk Use"
+				},
+				"subtitle": {
+					"text": "By Tenant"
+				}
+			},
+			"size": {
+				"canvasWidth": dest.width()
+			},
+			"data": {
+				content: pieChartData
+			}
+		});
+	});
 }
 
 function populateHypervisors(response) {
@@ -50,7 +107,7 @@ function populateHypervisors(response) {
 
 function onAuthenticated(catalog) {
 	populateCatalog(catalog);
-	keystone.getTenants(populateTenants, false);
+	keystone.getTenants(false).done(populateTenants);
 	// Use the catalog to connect to Nova
 	keystone.getEndpoint({
 		serviceType: "compute",
@@ -61,72 +118,15 @@ function onAuthenticated(catalog) {
 			token: keystone.getToken()
 		});
 		// Use Nova to retrieve a list of instances
-		nova.getAllInstancesDetailed({}, function(instances) {
+		nova.getAllInstancesDetailed().done(function(instances) {
 			populateInstances(instances);
-			makePieChartDataTenantResource(keystone, instances, "vcpus", function(pieChartData) {
-				var dest = $("#pieChartVCPUs");
-				makePieChart(dest, {
-					"header": {
-						"title": {
-							"text": "vCPU Use"
-						},
-						"subtitle": {
-							"text": "By Tenant"
-						}
-					},
-					"size": {
-						"canvasWidth": dest.width()
-					},
-					"data": {
-						content: pieChartData
-					}
-				});
-			});
-			makePieChartDataTenantResource(keystone, instances, "ram", function(pieChartData) {
-				var dest = $("#pieChartMemory");
-				makePieChart(dest, {
-					"header": {
-						"title": {
-							"text": "Memory Use"
-						},
-						"subtitle": {
-							"text": "By Tenant"
-						}
-					},
-					"size": {
-						"canvasWidth": dest.width()
-					},
-					"data": {
-						content: pieChartData
-					}
-				});
-			});
-			makePieChartDataTenantResource(keystone, instances, "disk", function(pieChartData) {
-				var dest = $("#pieChartLocalDisk");
-				makePieChart(dest, {
-					"header": {
-						"title": {
-							"text": "Local Disk Use"
-						},
-						"subtitle": {
-							"text": "By Tenant"
-						}
-					},
-					"size": {
-						"canvasWidth": dest.width()
-					},
-					"data": {
-						content: pieChartData
-					}
-				});
-			});
 		});
 		$(".pieChart").on("segmentClicked.d3pie", function(event, data) {
 			// TODO
 			console.log("Pie segment for tenant " + data.data.id + " " + (data.expanded ? "un" : "") + "expanded");
 		});
 		// Use Nova to retrieve a list of hypervisors
-		nova.getHypervisorsDetailed(populateHypervisors);
+		nova.getHypervisorsDetailed().done(populateHypervisors);
 	});
 	addDownloadLinks();
 };
@@ -176,6 +176,7 @@ function onAuthenticated(catalog) {
 		});
 		tenantSelect.on("change", function() {
 			keystone.setTenantID(tenantSelect.val());
+			keystone.retrieveCatalog(onAuthenticated);
 		});
 		$("#goButton").on("click", function() {
 			keystone = new osclient.Keystone({

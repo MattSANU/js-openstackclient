@@ -88,18 +88,20 @@ var chartBaseConfig = {
 
 function makePieChartDataTenantResources(keystone, instances, onComplete) {
 	// FIXME: Hideously inefficient.
-	var byTenant = {}, promises = [], flavours = [];
-	promises.push(nova.getFlavorsDetailed(function(flavours) {
+	var byTenant = {}, promise, promises = [], flavours = [];
+	promises.push(promise = nova.getFlavorsDetailed());
+	promise.done(function(flavours) {
 		$(flavours.flavors).each(function(i, flavour) {
 			flavours[flavour.id] = flavour;
 		});
-	}));
+	});
 	$(instances.servers).each(function(i, instance) {
 		if (!(instance.flavor.id in flavours)) {
 			// This may be a flavour deleted since the instance was booted.
-			promises.push(nova.getFlavorByID(instance.flavor.id, function(flavour) {
+			promises.push(promise = nova.getFlavorByID(instance.flavor.id));
+			promise.done(function(flavour) {
 				flavours[instance.flavor.id] = flavour.flavor;
-			}));
+			});
 		}
 		if (!(instance.tenant_id in byTenant)) {
 			byTenant[instance.tenant_id] = {
@@ -108,9 +110,10 @@ function makePieChartDataTenantResources(keystone, instances, onComplete) {
 				disk: 0,
 				ephemeral: 0
 			};
-			promises.push(keystone.getTenantByID(instance.tenant_id, function(tenant) {
+			promises.push(promise = keystone.getTenantByID(instance.tenant_id));
+			promise.done(function(tenant) {
 				byTenant[instance.tenant_id].tenantName = tenant.project.name;
-			}));
+			});
 		}
 	});
 	$.when.apply($, promises).done(function() {

@@ -28,7 +28,8 @@ $.extend(osclient.Keystone.prototype, {
 	 * Retrieve a list of available versions of the Identity API.
 	 */
 	retrieveVersions: function(onComplete) {
-		var keystone = this;
+		var keystone = this, promise;
+		// TODO: Return a (cached) promise
 		if ($.isEmptyObject(this.apiVersions)) {
 			return this.doRequest({
 				// jQuery interprets the HTTP status code 300 Multiple Choices as an error
@@ -53,8 +54,8 @@ $.extend(osclient.Keystone.prototype, {
 	/**
 	 * Authenticate against an OpenStack Keystone Identity v2.0 service, yielding an authentication token.
 	 */
-	authenticatev2_0: function(onComplete) {
-		var keystone = this, authPayload = {
+	authenticatev2_0: function() {
+		var keystone = this, promise, authPayload = {
 			"auth": {
 				"passwordCredentials": {
 					"username": this.username,
@@ -71,35 +72,35 @@ $.extend(osclient.Keystone.prototype, {
 		} else if (this.tenantName) {
 			authPayload.auth.tenantName = this.tenantName;
 		}
-		return this.doRequest({
+		promise = this.doRequest({
 			data: JSON.stringify(authPayload),
 			method: "POST",
 			processData: false,
-			success: function(response, jqxhr, status) {
-				keystone.userID = response.access.user.id;
-				keystone.token = response.access.token.id;
-				if (response.access.token.tenant) {
-					if (response.access.token.tenant.id) {
-						keystone.tenantID = response.access.token.tenant.id;
-					}
-					if (response.access.token.tenant.name) {
-						keystone.tenantName = response.access.token.tenant.name;
-					}
-				}
-				if (!response.access.serviceCatalog) {
-					keystone.catalog = response.access.serviceCatalog;
-				}
-				onComplete();
-			},
 			url: this.authURL + "/v2.0/tokens"
+		}).promise();
+		promise.done(function(response, jqxhr, status) {
+			keystone.userID = response.access.user.id;
+			keystone.token = response.access.token.id;
+			if (response.access.token.tenant) {
+				if (response.access.token.tenant.id) {
+					keystone.tenantID = response.access.token.tenant.id;
+				}
+				if (response.access.token.tenant.name) {
+					keystone.tenantName = response.access.token.tenant.name;
+				}
+			}
+			if (!response.access.serviceCatalog) {
+				keystone.catalog = response.access.serviceCatalog;
+			}
 		});
+		return promise;
 	},
 
 	/**
 	 * Authenticate against an OpenStack Keystone Identity v3 service, yielding an authentication token.
 	 */
-	authenticatev3: function(onComplete) {
-		var keystone = this, authPayload = {
+	authenticatev3: function() {
+		var keystone = this, promise, authPayload = {
 			"auth": {
 				"identity": {
 					"methods": [
@@ -127,27 +128,27 @@ $.extend(osclient.Keystone.prototype, {
 		} else {
 			throw "Neither username and domainID nor userID supplied";
 		}
-		return this.doRequest({
+		promise = this.doRequest({
 			data: JSON.stringify(authPayload),
 			method: "POST",
 			processData: false,
-			success: function(response, status, jqxhr) {
-				var newToken = jqxhr.getResponseHeader("X-Subject-Token");
-				if (newToken) {
-					keystone.token = newToken;
-				}
-				if (response.token.catalog) {
-					keystone.catalog = response.token.catalog;
-				}
-				if (response.token.user) {
-					if (response.token.user.id) {
-						keystone.userID = response.token.user.id;
-					}
-				}
-				onComplete();
-			},
 			url: this.authURL + "/v3/auth/tokens"
+		}).promise();
+		promise.done(function(response, status, jqxhr) {
+			var newToken = jqxhr.getResponseHeader("X-Subject-Token");
+			if (newToken) {
+				keystone.token = newToken;
+			}
+			if (response.token.catalog) {
+				keystone.catalog = response.token.catalog;
+			}
+			if (response.token.user) {
+				if (response.token.user.id) {
+					keystone.userID = response.token.user.id;
+				}
+			}
 		});
+		return promise;
 	},
 
 	/**
@@ -163,31 +164,32 @@ $.extend(osclient.Keystone.prototype, {
 	 * So we auth without a tenant ID, find at least one valid tenant ID, then auth again with that.
 	 */
 	authenticate: function(onComplete) {
+		// TODO: Return a (cached) promise
 		var keystone = this;
 		if (this.token) {
 			onComplete();
 		} else {
 			return this.retrieveVersions(function() {
 				if ("v3.0" in keystone.apiVersions) {
-					keystone.authenticatev3(function() {
+					keystone.authenticatev3().done(function() {
 						keystone.findIdentityEndpoints();
 						onComplete();
 					});
 				} else if ("v2.0" in keystone.apiVersions) {
-					keystone.authenticatev2_0(function() {
+					keystone.authenticatev2_0().done(function() {
 						if (this.tenantID && this.catalog) {
 							keystone.findIdentityEndpoints();
 							onComplete();
 						} else {
 							// Use the token to obtain a list of accessible tenants
-							keystone.getTenants(function(tenants) {
+							keystone.getTenants().done(function(tenants) {
 								if (!tenants.tenants.length) {
 									throw "No accessible tenants";
 								}
 								// Choose the first tenant listed
 								keystone.setTenantID(tenants.tenants[0].id);
 								// Authenticate again, this time with a tenant ID, to obtain the service catalog
-								keystone.authenticate2_0(function() {
+								keystone.authenticate2_0().done(function() {
 									keystone.findIdentityEndpoints();
 									onComplete();
 								});
@@ -357,13 +359,13 @@ $.extend(osclient.Keystone.prototype, {
 	/**
 	 * Set the tenant ID. This will cause retrieval of a new catalog when required.
 	 */
-	setTenantID: function() {
+	setTenantID: function(newTenantID) {
 		this.tenantID = newTenantID;
 		this.tenantName = null;
 		this.clearToken();
 	},
 	setProjectID: function() {
-		return this.setTEnantID.apply(this, arguments);
+		return this.setTenantID.apply(this, arguments);
 	},
 
 	/**
@@ -382,8 +384,8 @@ $.extend(osclient.Keystone.prototype, {
 	 * Retrieve a list of tenants.
 	 * This can be all tenants, or only those accessible via the currently-in-use credentials.
 	 */
-	getTenants: function(onComplete, includeAll, maxResults, startAfter) {
-		var url, data = {};
+	getTenants: function(includeAll, maxResults, startAfter) {
+		var promise, url, data = {};
 		// TODO: Accept a generalised params object rather than positional arguments
 		if ("v3.0" in this.apiVersions) {
 			url = this.publicURL;
@@ -416,22 +418,22 @@ $.extend(osclient.Keystone.prototype, {
 		} else {
 			throw "No compatible Identity API";
 		}
-		return this.doRequest({
+		promise = this.doRequest({
 			data: data,
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
-			success: function(response) {
-				// Normalise the v2.0/v3 response
-				if ("tenants" in response && !("projects" in response)) {
-					response.projects = response.tenants;
-				}
-				if ("projects" in response && !("tenants" in response)) {
-					response.tenants = response.projects;
-				}
-				onComplete(response);
-			},
 			url: url
+		}).promise();
+		promise.done(function(response) {
+			// Normalise the v2.0/v3 response
+			if ("tenants" in response && !("projects" in response)) {
+				response.projects = response.tenants;
+			}
+			if ("projects" in response && !("tenants" in response)) {
+				response.tenants = response.projects;
+			}
 		});
+		return promise;
 	},
 	getProjects: function() {
 		return this.getTenants.apply(this, arguments);
@@ -440,7 +442,7 @@ $.extend(osclient.Keystone.prototype, {
 	/**
 	 * Retrieve details of the user with the given ID.
 	 */
-	getUserByID: function(userID, onComplete) {
+	getUserByID: function(userID) {
 		var url;
 		if ("v3.0" in this.apiVersions) {
 			url = this.publicURL;
@@ -453,13 +455,13 @@ $.extend(osclient.Keystone.prototype, {
 			headers: { "X-Auth-Token": this.token },
 			success: onComplete,
 			url: url + '/users/' + userID
-		});
+		}).promise();
 	},
 
 	/**
 	 * Retrieve details of the given-named user.
 	 */
-	getUserByName: function(username, onComplete) {
+	getUserByName: function(username) {
 		var url;
 		if ("v3.0" in this.apiVersions) {
 			url = this.publicURL;
@@ -472,17 +474,16 @@ $.extend(osclient.Keystone.prototype, {
 			data: { name: username },
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
-			success: onComplete,
 			// FIXME: Does this request need to go to the 'admin' URL rather than the public one?
 			url: this.publicURL + '/users'
-		});
+		}).promise();
 	},
 
 	/**
 	 * Retrieve details of the tenant with the given ID.
 	 * In various places within OpenStack, this entity is also called a "project".
 	 */
-	getTenantByID: function(tenantID, onComplete) {
+	getTenantByID: function(tenantID) {
 		var url;
 		if ("v3.0" in this.apiVersions) {
 			url = this.publicURL + "/projects";
@@ -493,10 +494,9 @@ $.extend(osclient.Keystone.prototype, {
 		}
 		return this.doRequest({
 			headers: { "X-Auth-Token": this.token },
-			success: onComplete,
 			// FIXME: Does this request need to go to the 'admin' URL rather than the public one?
 			url: url + "/" + tenantID
-		});
+		}).promise();
 	},
 	getProjectByID: function() {
 		return this.getTenantByID.apply(this, arguments);
@@ -506,7 +506,7 @@ $.extend(osclient.Keystone.prototype, {
 	 * Retrieve details of the given-named tenant.
 	 * In various places within OpenStack, this entity is also called a "project".
 	 */
-	getTenantByName: function(tenantName, onComplete) {
+	getTenantByName: function(tenantName) {
 		var url;
 		if ("v3.0" in this.apiVersions) {
 			url = this.publicURL + "/projects";
@@ -519,10 +519,9 @@ $.extend(osclient.Keystone.prototype, {
 			data: { name: tenantName },
 			headers: { "X-Auth-Token": this.token },
 			processData: true,
-			success: onComplete,
 			// FIXME: Does this request need to go to the 'admin' URL rather than the public one?
 			url: url
-		});
+		}).promise();
 	},
 	getProjectByName: function() {
 		return this.getTenantByName.apply(this, arguments);
