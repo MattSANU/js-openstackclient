@@ -143,6 +143,28 @@ function makePieChartDataTenantResource(resource, tenantResourceUse, onComplete)
 	onComplete(data);
 }
 
+function retrieveResourceUse(nova, onComplete) {
+	nova.getHypervisorsDetailed().done(function(hypervisors) {
+		var used = { vcpus: 0, ram: 0, disk: 0 }, free = { vcpus: 0, ram: 0, disk: 0 };
+		$(hypervisors).each(function(i, hypervisor) {
+			used.vcpus += hypervisor.vcpus_used;
+			free.vcpus += hypervisor.vcpus - hypervisor.vcpus_used;
+			used.ram   += hypervisor.memory_mb_used;
+			free.ram   += hypervisor.memory_mb - hypervisor.memory_mb_used;
+			used.disk  += hypervisor.local_gb_used;
+			free.disk  += hypervisor.local_gb - hypervisor.local_gb_used;
+		});
+		onComplete({ used: used, free: free });
+	});
+}
+
+function makePieChartDataResource(resource, resourceUse, onComplete) {
+	onComplete([
+		{ label: "Used", value: resourceUse.used[resource] },
+		{ label: "Free", value: resourceUse.free[resource] }
+	]);
+}
+
 function makePieChart(element, thisChartConfig) {
 	var chartConfig = {};
 	$.extend(true, chartConfig, chartBaseConfig, thisChartConfig);

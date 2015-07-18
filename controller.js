@@ -8,7 +8,7 @@
 
 var keystone, nova;
 
-function populateTenants(tenants) {
+function populateTenantSelector(tenants) {
 	var target = $("#tenantSelect").empty();
 	$(tenants).each(function(i, tenant) {
 		target.append(
@@ -21,6 +21,10 @@ function populateTenants(tenants) {
 
 function populateCatalog(catalog) {
 	$("#catalog table").DataTable().clear().rows.add(catalog).draw();
+}
+
+function populateTenants(tenants) {
+	$("#tenants table").DataTable().clear().rows.add(tenants).draw();
 }
 
 function addDownloadLinks() {
@@ -44,7 +48,7 @@ function populateInstances(instances) {
 	$("#instances table").DataTable().clear().rows.add(instances).draw();
 	retrieveTenantResourceUse(keystone, instances, function(tenantResourceUse) {
 		makePieChartDataTenantResource("vcpus", tenantResourceUse, function(pieChartData) {
-			var dest = $("#pieChartVCPUs");
+			var dest = $("#pieChartTenantVCPUs");
 			makePieChart(dest, {
 				"header": {
 					"title": {
@@ -67,7 +71,7 @@ function populateInstances(instances) {
 			});
 		});
 		makePieChartDataTenantResource("ram", tenantResourceUse, function(pieChartData) {
-			var dest = $("#pieChartMemory");
+			var dest = $("#pieChartTenantMemory");
 			makePieChart(dest, {
 				"header": {
 					"title": {
@@ -90,7 +94,7 @@ function populateInstances(instances) {
 			});
 		});
 		makePieChartDataTenantResource("disk", tenantResourceUse, function(pieChartData) {
-			var dest = $("#pieChartLocalDisk");
+			var dest = $("#pieChartTenantLocalDisk");
 			makePieChart(dest, {
 				"header": {
 					"title": {
@@ -121,7 +125,8 @@ function populateHypervisors(hypervisors) {
 
 function onAuthenticated(catalog) {
 	populateCatalog(catalog);
-	keystone.getTenants(false).done(populateTenants);
+	keystone.getTenants(false).done(populateTenantSelector);
+	keystone.getTenants(true).done(populateTenants);
 	// Use the catalog to connect to Nova
 	keystone.getEndpoint({
 		serviceType: "compute",
@@ -139,6 +144,77 @@ function onAuthenticated(catalog) {
 		});
 		// Use Nova to retrieve a list of hypervisors
 		nova.getHypervisorsDetailed().done(populateHypervisors);
+		retrieveResourceUse(nova, function(resourceUse) {
+			makePieChartDataResource('vcpus', resourceUse, function(pieChartData) {
+				var dest = $("#pieChartVCPUs");
+				makePieChart(dest, {
+					"header": {
+						"title": {
+							"text": "vCPU Use"
+						},
+						"subtitle": {
+							"text": "Total"
+						}
+					},
+					"size": {
+						"canvasHeight": dest.height(),
+						"canvasWidth": dest.width()
+					},
+					tooltips: {
+						"string": "{label}: {value} vCPUs ({percentage}%)"
+					},
+					"data": {
+						content: pieChartData
+					}
+				});
+			});
+			makePieChartDataResource('ram', resourceUse, function(pieChartData) {
+				var dest = $("#pieChartMemory");
+				makePieChart(dest, {
+					"header": {
+						"title": {
+							"text": "Memory Use"
+						},
+						"subtitle": {
+							"text": "Total"
+						}
+					},
+					"size": {
+						"canvasHeight": dest.height(),
+						"canvasWidth": dest.width()
+					},
+					tooltips: {
+						"string": "{label}: {value} MB ({percentage}%)"
+					},
+					"data": {
+						content: pieChartData
+					}
+				});
+			});
+			makePieChartDataResource('disk', resourceUse, function(pieChartData) {
+				var dest = $("#pieChartLocalDisk");
+				makePieChart(dest, {
+					"header": {
+						"title": {
+							"text": "Local Disk Use"
+						},
+						"subtitle": {
+							"text": "Total"
+						}
+					},
+					"size": {
+						"canvasHeight": dest.height(),
+						"canvasWidth": dest.width()
+					},
+					tooltips: {
+						"string": "{label}: {value} GB ({percentage}%)"
+					},
+					"data": {
+						content: pieChartData
+					}
+				});
+			});
+		});
 	});
 	addDownloadLinks();
 };
@@ -150,6 +226,13 @@ function onAuthenticated(catalog) {
 		$('input[type=text]').addClass("ui-widget ui-widget-content ui-corner-all");
 		$('select').menu();
 		$('textfield.numeric, input.numeric').spinner();
+		$("#tenants table").DataTable({
+			columns: [
+				{ "data": "name", title: "Name" },
+				{ "data": "description", title: "Description" },
+				{ "data": "enabled", title: "Enabled" }
+			]
+		});
 		$("#catalog table").DataTable({
 			columns: [
 				{ "data": "type", title: "Type" },

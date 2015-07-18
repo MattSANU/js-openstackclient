@@ -35,15 +35,33 @@
 </form>
 </div>
 
-<div id="pieChartVCPUs" class="pieChart"></div>
-<div id="pieChartMemory" class="pieChart"></div>
-<div id="pieChartLocalDisk" class="pieChart"></div>
-
 <div id="tenant">
 <form method="" action="">
 <fieldset class="shrinkwrap">
 <legend>Tenant</legend>
 <p><label><span>Current tenant</span><select id="tenantSelect" name="tenantSelect" required></select></label></p>
+</fieldset>
+</form>
+</div>
+
+<div id="totalResourceUse">
+<form method="" action="">
+<fieldset class="shrinkwrap">
+<legend>Total Resource Use</legend>
+<div id="pieChartVCPUs" class="pieChart"></div>
+<div id="pieChartMemory" class="pieChart"></div>
+<div id="pieChartLocalDisk" class="pieChart"></div>
+</fieldset>
+</form>
+</div>
+
+<div id="tenantResourceUse">
+<form method="" action="">
+<fieldset class="shrinkwrap">
+<legend>Tenant Resource Use</legend>
+<div id="pieChartTenantVCPUs" class="pieChart"></div>
+<div id="pieChartTenantMemory" class="pieChart"></div>
+<div id="pieChartTenantLocalDisk" class="pieChart"></div>
 </fieldset>
 </form>
 </div>
@@ -54,6 +72,15 @@
 <form method="" action="">
 <fieldset class="shrinkwrap">
 <legend>Endpoints</legend>
+<table></table>
+</fieldset>
+</form>
+</div>
+
+<div id="tenants">
+<form method="" action="">
+<fieldset class="shrinkwrap">
+<legend>Tenants</legend>
 <table></table>
 </fieldset>
 </form>
