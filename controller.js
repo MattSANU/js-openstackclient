@@ -138,7 +138,7 @@ function onAuthenticated(catalog) {
 		});
 		// Use Nova to retrieve a list of instances
 		nova.getAllInstancesDetailed().done(populateInstances);
-		$(".pieChart").on("segmentClicked.d3pie", function(event, data) {
+		$("#tenantResourceUse .pieChart").on("segmentClicked.d3pie", function(event, data) {
 			// TODO
 			console.log("Pie segment for tenant " + data.data.id + " " + (data.expanded ? "un" : "") + "expanded");
 		});
