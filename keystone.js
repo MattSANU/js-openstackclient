@@ -129,8 +129,22 @@ $.extend(osclient.Keystone.prototype, {
 		} else if (this.userID) {
 			// The user ID is globally unique
 			authPayload.auth.identity.password.user.id = this.userID;
+		} else if (this.token) {
+			// No username, but token given
+			authPayload = {
+				"auth": {
+					"identity": {
+						"methods": [
+							"token"
+						],
+						"token": {
+							"id": this.token
+						}
+					}
+				}
+			};
 		} else {
-			throw "Neither username and domainID nor userID supplied";
+			throw "Neither username and domainID nor userID nor token supplied";
 		}
 		promise = this.doRequest({
 			data: JSON.stringify(authPayload),
