@@ -46,7 +46,7 @@ $.extend(osclient.Keystone.prototype, {
 						});
 						keystone.apiVersionsDeferred.resolve(response);
 					} else {
-						throw "Failed to receive expected 300 response";
+						keystone.apiVersionsDeferred.reject('Failed to receive expected 300 response');
 					}
 				},
 				url: this.authURL 
@@ -183,42 +183,43 @@ $.extend(osclient.Keystone.prototype, {
 	 */
 	authenticate: function() {
 		var keystone = this;
-		if (!this.authenticateDeferred) {
-			this.authenticateDeferred = $.Deferred(function() {
-				keystone.retrieveVersions().done(function() {
-					if ("v3.0" in keystone.apiVersions) {
-						keystone.authenticatev3().done(function() {
-							keystone.findIdentityEndpoints();
-							keystone.authenticateDeferred.resolve(keystone.catalog);
-						});
-					} else if ("v2.0" in keystone.apiVersions) {
-						keystone.authenticatev2_0().done(function() {
-							if (keystone.tenantID && keystone.catalog) {
-								keystone.findIdentityEndpoints();
-								keystone.authenticateDeferred.resolve(keystone.catalog);
-							} else {
-								// Use the token to obtain a list of accessible tenants
-								keystone.getTenants().done(function(tenants) {
-									if (!tenants.length) {
-										throw "No accessible tenants";
-									}
-									// Choose the first tenant listed
-									keystone.setTenantID(tenants[0].id);
-									// Authenticate again, this time with a tenant ID, to obtain the service catalog
-									keystone.authenticate2_0().done(function() {
-										keytone.findIdentityEndpoints();
-										keystone.authenticateDeferred.resolve(keystone.catalog);
-									});
-								});
-							}
-						});
-					} else {
-						throw "No supported Identity API version found";
-					}
-				});
-			});
+		if (!keystone.authenticateDeferred) { // cache promise object (promise result always gets cached anyway, i.e. re-calling "then" will call handlers immediately with whatever result has already been obtained)
+		    // chain retrieveVersions promise with another promise returning catalog
+		    keystone.authenticateDeferred = keystone.retrieveVersions().then(function() { // need to chain with "then" rather than "done", otherwise calling d.reject below does not propagate, and state of keystone.authenticateDeferred is "resolved"
+		        var d = $.Deferred();
+			    if ("v3.0" in keystone.apiVersions) {
+				    keystone.authenticatev3().then(function() {
+					    keystone.findIdentityEndpoints();
+					    d.resolve(keystone.catalog);
+				    });
+			    } else if ("v2.0" in keystone.apiVersions) {
+				    keystone.authenticatev2_0().then(function() {
+					    if (keystone.tenantID && keystone.catalog) {
+						    keystone.findIdentityEndpoints();
+						    d.resolve(keystone.catalog);
+					    } else {
+						    // Use the token to obtain a list of accessible tenants
+						    keystone.getTenants().then(function(tenants) {
+							    if (!tenants.length) {
+								    d.reject("No accessible tenants");
+							    }
+							    // Choose the first tenant listed
+							    keystone.setTenantID(tenants[0].id);
+							    // Authenticate again, this time with a tenant ID, to obtain the service catalog
+							    keystone.authenticate2_0().then(function() {
+								    keytone.findIdentityEndpoints();
+								    d.resolve(keystone.catalog);
+							    });
+						    });
+					    }
+				    });
+			    } else {
+				    d.reject("No supported Identity API version found");
+			    }
+		        return d.promise();
+		    });
 		}
-		return $.when(this.authenticateDeferred);
+		return keystone.authenticateDeferred;
 	},
 
 	/**
